@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>MPU6050 Realtime Dashboard</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .info {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #9ca3af;
+    }
+    .chart-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #111827;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+  <h1>Đồ thị MPU6050 realtime</h1>
+  <div class="info">
+    <div id="textInfo">Chờ dữ liệu từ ESP32/MPU6050...</div>
+  </div>
+  <div class="chart-container">
+    <canvas id="accelChart"></canvas>
+  </div>
+
+  <script>
+    const socket = io();
+
+    const labels = [];
+    const accelX = [];
+    const accelY = [];
+    const accelZ = [];
+
+    const ctx = document.getElementById('accelChart').getContext('2d');
+    const accelChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Ax (m/s²)',
+            data: accelX,
+            borderColor: 'rgba(59,130,246,1)',
+            backgroundColor: 'rgba(59,130,246,0.2)',
+            tension: 0.2
+          },
+          {
+            label: 'Ay (m/s²)',
+            data: accelY,
+            borderColor: 'rgba(16,185,129,1)',
+            backgroundColor: 'rgba(16,185,129,0.2)',
+            tension: 0.2
+          },
+          {
+            label: 'Az (m/s²)',
+            data: accelZ,
+            borderColor: 'rgba(239,68,68,1)',
+            backgroundColor: 'rgba(239,68,68,0.2)',
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        scales: {
+          x: {
+            ticks: { color: '#9ca3af' }
+          },
+          y: {
+            ticks: { color: '#9ca3af' }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#e5e7eb' }
+          }
+        }
+      }
+    });
+
+    socket.on('sensor_data', (data) => {
+      const now = new Date();
+      const label = now.toLocaleTimeString();
+
+      labels.push(label);
+      accelX.push(data.ax);
+      accelY.push(data.ay);
+      accelZ.push(data.az);
+
+      if (labels.length > 100) {
+        labels.shift();
+        accelX.shift();
+        accelY.shift();
+        accelZ.shift();
+      }
+
+      accelChart.update('none');
+
+      const info = `T: ${data.t.toFixed(1)}°C, H: ${data.h.toFixed(1)}%, `
+                 + `Ax: ${data.ax.toFixed(2)}, Ay: ${data.ay.toFixed(2)}, Az: ${data.az.toFixed(2)}`;
+      document.getElementById('textInfo').textContent = info;
+    });
+  </script>
+</body>
+</html>
+
